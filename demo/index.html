@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Céleste — Luxury Event Planning Suite Demo Video</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --canvas: #FAF8F5;
+      --card-bg: #FFFFFF;
+      --bronze: #B4863A;
+      --bronze-dark: #8F6522;
+      --bronze-light: #F7EFE3;
+      --charcoal-900: #1C1917;
+      --charcoal-700: #44403C;
+      --charcoal-500: #78716C;
+      --border: #E7E5E4;
+      --olive: #586249;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--canvas);
+      color: var(--charcoal-900);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      line-height: 1.6;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--bronze);
+      background: var(--bronze-light);
+      padding: 6px 14px;
+      border-radius: 999px;
+      margin-bottom: 12px;
+      border: 1px solid rgba(180, 134, 58, 0.3);
+    }
+
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 42px;
+      font-weight: 700;
+      color: var(--charcoal-900);
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      font-size: 16px;
+      color: var(--charcoal-500);
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    .video-wrapper {
+      background: #000;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(180, 134, 58, 0.2);
+      margin-bottom: 40px;
+      position: relative;
+    }
+
+    video {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .video-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 24px;
+      background: #fff;
+      border-top: 1px solid var(--border);
+    }
+
+    .video-info {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--charcoal-700);
+    }
+
+    .video-info span {
+      color: var(--bronze);
+      font-weight: 600;
+    }
+
+    .btn-download {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bronze);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      transition: background 0.2s ease, transform 0.1s ease;
+    }
+
+    .btn-download:hover {
+      background: var(--bronze-dark);
+      transform: translateY(-1px);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+    }
+
+    @media (max-width: 900px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 28px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+      border: 1px solid var(--border);
+    }
+
+    .card h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 24px;
+      color: var(--charcoal-900);
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 10px;
+    }
+
+    .timeline-item {
+      display: flex;
+      gap: 16px;
+      padding: 12px 10px;
+      border-bottom: 1px solid #F5F5F4;
+      cursor: pointer;
+      transition: background 0.15s ease, transform 0.1s ease;
+      border-radius: 6px;
+    }
+
+    .timeline-item:hover {
+      background: var(--bronze-light);
+      transform: translateX(4px);
+    }
+
+    .time-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--bronze-dark);
+      background: #FDF9F3;
+      border: 1px solid rgba(180, 134, 58, 0.25);
+      padding: 4px 8px;
+      border-radius: 4px;
+      height: fit-content;
+      white-space: nowrap;
+    }
+
+    .timeline-content h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--charcoal-900);
+      margin-bottom: 4px;
+    }
+
+    .timeline-content p {
+      font-size: 13px;
+      color: var(--charcoal-700);
+    }
+
+    .feature-list {
+      list-style: none;
+    }
+
+    .feature-list li {
+      padding: 12px 0;
+      border-bottom: 1px solid #F5F5F4;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      font-size: 14px;
+    }
+
+    .feature-icon {
+      color: var(--bronze);
+      font-weight: bold;
+      font-size: 16px;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 60px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      color: var(--charcoal-500);
+      font-size: 13px;
+    }
+
+    footer a {
+      color: var(--bronze);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <span class="badge">Official Product Walkthrough</span>
+      <h1>Céleste Luxury Suite Demo</h1>
+      <p class="subtitle">Full 1080p high-definition showcase featuring studio voiceover narration and ambient luxury score.</p>
+    </header>
+
+    <div class="video-wrapper">
+      <video id="demoVideo" controls poster="thumbnail.jpg" playsinline preload="metadata">
+        <source src="celeste_luxury_suite_demo.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+      </video>
+      <div class="video-toolbar">
+        <div class="video-info">
+          Format: <span>1080p HD MP4 (H.264 / AAC)</span> &bull; Audio: <span>Studio Voiceover + Ambient Soundtrack</span> &bull; Duration: <span>2:17</span>
+        </div>
+        <a href="celeste_luxury_suite_demo.mp4" download="celeste_luxury_suite_demo.mp4" class="btn-download">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Download MP4
+        </a>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- Chapter Jump List -->
+      <div class="card">
+        <h2>Interactive Chapters & Voiceover</h2>
+        <p style="font-size: 13px; color: var(--charcoal-500); margin-bottom: 16px;">Click any section below to jump to that moment in the video:</p>
+
+        <div class="timeline-item" onclick="seekTo(1.0)">
+          <span class="time-pill">0:01</span>
+          <div class="timeline-content">
+            <h3>Overview & Hero Architecture</h3>
+            <p>"Welcome to Céleste, an elite GenAI event orchestration and collaboration suite..."</p>
+          </div>
+        </div>
+
+        <div class="timeline-item" onclick="seekTo(16.5)">
+          <span class="time-pill">0:16</span>
+          <div class="timeline-content">
+            <h3>Timeline & Precision Run-of-Show</h3>
+            <p>"Master every milestone with second-by-second precision—from load-in to midnight preludes."</p>
+          </div>
+        </div>
+
+        <div class="timeline-item" onclick="seekTo(38.5)">
+          <span class="time-pill">0:38</span>
+          <div class="timeline-content">
+            <h3>Budget Ledger & AI Fiduciary Advisor</h3>
+            <p>"Fiduciary clarity across allocations with Gemini risk modeling and negotiation levers."</p>
+          </div>
+        </div>
+
+        <div class="timeline-item" onclick="seekTo(64.5)">
+          <span class="time-pill">1:04</span>
+          <div class="timeline-content">
+            <h3>Secured Vendor Directory</h3>
+            <p>"Centralizing luxury ateliers, Michelin-grade catering, and fine art cinema partners."</p>
+          </div>
+        </div>
+
+        <div class="timeline-item" onclick="seekTo(86.5)">
+          <span class="time-pill">1:26</span>
+          <div class="timeline-content">
+            <h3>Creative Concepts & Dynamic Palettes</h3>
+            <p>"Tactile moodboards and interactive swatches from Bronze Gold to French Herb Olive."</p>
+          </div>
+        </div>
+
+        <div class="timeline-item" onclick="seekTo(104.5)">
+          <span class="time-pill">1:44</span>
+          <div class="timeline-content">
+            <h3>Live Multi-User Team Room</h3>
+            <p>"Keep global teams in lockstep with real-time collaborative presence and live audit feeds."</p>
+          </div>
+        </div>
+
+        <div class="timeline-item" onclick="seekTo(116.0)">
+          <span class="time-pill">1:56</span>
+          <div class="timeline-content">
+            <h3>GenAI Plan Generation (Lake Como Nuptials)</h3>
+            <p>"Select a luxury preset and generate a full plan instantly into Villa Balbiano Nuptials."</p>
+          </div>
+        </div>
+
+        <div class="timeline-item" onclick="seekTo(131.5)">
+          <span class="time-pill">2:11</span>
+          <div class="timeline-content">
+            <h3>Outro & Call to Action</h3>
+            <p>"Experience the pinnacle of intelligent luxury event design. Discover Céleste today."</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feature Capabilities -->
+      <div class="card">
+        <h2>Key Suite Capabilities</h2>
+        <ul class="feature-list">
+          <li>
+            <span class="feature-icon">&#10022;</span>
+            <div>
+              <strong>Gemini 3.8 Flash Integration</strong>
+              <p style="color: var(--charcoal-500); font-size: 13px;">Instant generation of complete bespoke event plans, budget allocations, and contingency mitigation.</p>
+            </div>
+          </li>
+          <li>
+            <span class="feature-icon">&#10022;</span>
+            <div>
+              <strong>Autonomous Fiduciary Risk Modeling</strong>
+              <p style="color: var(--charcoal-500); font-size: 13px;">Real-time guest expenditure calculation ($1,333/guest) and dynamic vendor negotiation levers.</p>
+            </div>
+          </li>
+          <li>
+            <span class="feature-icon">&#10022;</span>
+            <div>
+              <strong>Second-by-Second Master Schedule</strong>
+              <p style="color: var(--charcoal-500); font-size: 13px;">Precision countdown, phase status badges, load-in timing, and full day-of run-of-show.</p>
+            </div>
+          </li>
+          <li>
+            <span class="feature-icon">&#10022;</span>
+            <div>
+              <strong>Harmonic Palette Engine</strong>
+              <p style="color: var(--charcoal-500); font-size: 13px;">Interactive luxury swatch themes: Warm Ivory, Burnished Bronze, Vintage Rosewood, and French Olive.</p>
+            </div>
+          </li>
+          <li>
+            <span class="feature-icon">&#10022;</span>
+            <div>
+              <strong>Real-Time Team Presence</strong>
+              <p style="color: var(--charcoal-500); font-size: 13px;">Multi-user audit trails, role-based orchestration, and live synchronized state across planners.</p>
+            </div>
+          </li>
+        </ul>
+
+        <div style="margin-top: 24px; padding: 16px; background: #FAF8F5; border-radius: 8px; border: 1px solid var(--border);">
+          <div style="font-weight: 600; font-size: 13px; color: var(--bronze-dark); margin-bottom: 4px;">Live Application URL</div>
+          <a href="https://manaditi.github.io/Celeste-Luxury-Event-Planning-Suite/" target="_blank" style="color: var(--charcoal-900); font-size: 13px; word-break: break-all; text-decoration: underline;">https://manaditi.github.io/Celeste-Luxury-Event-Planning-Suite/</a>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <p>Produced for <strong>Céleste &mdash; GenAI Event Orchestration & Collaboration Suite</strong></p>
+    </footer>
+  </div>
+
+  <script>
+    function seekTo(seconds) {
+      const vid = document.getElementById('demoVideo');
+      vid.currentTime = seconds;
+      vid.play();
+      vid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  </script>
+</body>
+</html>
