@@ -9,6 +9,28 @@ Céleste is an editorial luxury event planning assistant designed to curate, org
 
 ---
 
+## 📹 Product Walkthrough & Demo Video
+
+Watch the official 1080p high-definition walkthrough of Céleste, featuring studio voiceover narration and ambient background score:
+
+[![Céleste Demo Video](demo/thumbnail.jpg)](demo/celeste_luxury_suite_demo.mp4)
+
+- **Interactive Showcase Player**: [`demo/index.html`](demo/index.html) *(features one-click chapter jumping, responsive playback, and download)*
+- **Direct Video File**: [`demo/celeste_luxury_suite_demo.mp4`](demo/celeste_luxury_suite_demo.mp4) (1080p Full HD, 2:17 duration)
+- **Live Suite URL**: [https://manaditi.github.io/Celeste-Luxury-Event-Planning-Suite/](https://manaditi.github.io/Celeste-Luxury-Event-Planning-Suite/)
+
+### Walkthrough Chapters
+- `0:01` — **Executive Overview & Hero Architecture**: Napa Valley St. Clair Estate, budget metrics ($240k committed), and sensory atmosphere architecture.
+- `0:16` — **Timeline & Precision Run-of-Show**: Second-by-second master schedules, load-in timing, and champagne preludes.
+- `0:38` — **Budget Ledger & AI Fiduciary Advisor**: Line-item allocations, paid deposits, and Gemini 3.8 Flash autonomous risk modeling ($1,333/guest) and vendor levers.
+- `1:04` — **Secured Vendor Directory**: Premier ateliers, Michelin-grade catering, Lumière cinema suites, and contract audits.
+- `1:26` — **Creative Concepts & Dynamic Palettes**: Interactive swatch switching (*Burnished Bronze Gold*, *Vintage Rosewood*, *French Herb Olive*).
+- `1:44` — **Live Multi-User Team Room**: Real-time collaborative presence and live audit logs.
+- `1:56` — **GenAI Instant Plan Generation**: Launching the Gemini planner, selecting the *Lake Como Villa Wedding* preset, and transforming the suite into *Villa Balbiano Renaissance Nuptials*.
+- `2:11` — **Outro & Call to Action**: Final aesthetic pan and showcase conclusion.
+
+---
+
 ## Key Features
 
 1. **Editorial Luxury Visual Aesthetic**:
