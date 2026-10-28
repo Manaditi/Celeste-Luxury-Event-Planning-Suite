@@ -1,5 +1,11 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useEventContext } from '../../context/EventContext';
+import { 
+  formatCurrency, 
+  formatDate, 
+  calculateDaysRemaining, 
+  calculateBudgetMetrics 
+} from '../../utils/formatters';
 import { 
   Calendar, 
   MapPin, 
@@ -16,50 +22,50 @@ import {
 export const EventBanner: React.FC = () => {
   const { currentEvent, setActiveView, setIsBudgetAdvisorOpen, isSimulationActive } = useEventContext();
 
-  // Financial calculations
-  const totalPlanned = currentEvent.budgetTotal || 1;
-  const totalCommitted = currentEvent.budgetItems?.reduce((sum, item) => sum + (item.committedAmount || 0), 0) || 0;
-  const totalPaid = currentEvent.budgetItems?.reduce((sum, item) => sum + (item.paidAmount || 0), 0) || 0;
-  const budgetVariance = totalCommitted - totalPlanned;
-  const committedPercent = Math.min(100, Math.round((totalCommitted / totalPlanned) * 100));
+  // Memoized financial calculations
+  const budgetMetrics = useMemo(() => {
+    return calculateBudgetMetrics(
+      currentEvent.budgetTotal || 1,
+      currentEvent.budgetItems || [],
+      currentEvent.guestCount || 1
+    );
+  }, [currentEvent.budgetTotal, currentEvent.budgetItems, currentEvent.guestCount]);
 
-  // Timeline calculations
-  const totalTimeline = currentEvent.timeline?.length || 0;
-  const completedTimeline = currentEvent.timeline?.filter(t => t.status === 'completed').length || 0;
-  const inProgressTimeline = currentEvent.timeline?.filter(t => t.status === 'in_progress').length || 0;
+  const { totalPlanned, totalCommitted, totalPaid, variance: budgetVariance, committedPercent } = budgetMetrics;
 
-  // Vendor calculations
-  const totalVendors = currentEvent.vendors?.length || 0;
-  const contractedVendors = currentEvent.vendors?.filter(v => 
-    v.contractStatus === 'contract_signed' || v.contractStatus === 'deposit_paid' || v.contractStatus === 'fulfilled'
-  ).length || 0;
+  // Memoized timeline calculations
+  const timelineMetrics = useMemo(() => {
+    const list = currentEvent.timeline || [];
+    return {
+      totalTimeline: list.length,
+      completedTimeline: list.filter(t => t.status === 'completed').length,
+      inProgressTimeline: list.filter(t => t.status === 'in_progress').length,
+    };
+  }, [currentEvent.timeline]);
+
+  const { totalTimeline, completedTimeline, inProgressTimeline } = timelineMetrics;
+
+  // Memoized vendor calculations
+  const vendorMetrics = useMemo(() => {
+    const list = currentEvent.vendors || [];
+    return {
+      totalVendors: list.length,
+      contractedVendors: list.filter(v => 
+        v.contractStatus === 'contract_signed' || v.contractStatus === 'deposit_paid' || v.contractStatus === 'fulfilled'
+      ).length,
+    };
+  }, [currentEvent.vendors]);
+
+  const { totalVendors, contractedVendors } = vendorMetrics;
 
   // Collaborator counts
-  const activeCollaborators = currentEvent.collaborators?.filter(c => c.status !== 'away') || [];
+  const activeCollaborators = useMemo(() => {
+    return (currentEvent.collaborators || []).filter(c => c.status !== 'away');
+  }, [currentEvent.collaborators]);
 
-  // Format date nicely
-  const formatDate = (dateStr: string) => {
-    try {
-      const d = new Date(dateStr);
-      return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-    } catch {
-      return dateStr;
-    }
-  };
-
-  // Calculate days remaining
-  const calculateDaysRemaining = (dateStr: string) => {
-    try {
-      const target = new Date(dateStr).getTime();
-      const now = new Date().getTime();
-      const diff = Math.ceil((target - now) / (1000 * 60 * 60 * 24));
-      return diff > 0 ? diff : 0;
-    } catch {
-      return 120;
-    }
-  };
-
-  const daysRemaining = calculateDaysRemaining(currentEvent.date);
+  const daysRemaining = useMemo(() => {
+    return calculateDaysRemaining(currentEvent.date);
+  }, [currentEvent.date]);
 
   return (
     <section className="bg-[#FAF8F5] border-b border-[#B4863A]/20 pt-8 pb-6 transition-all">

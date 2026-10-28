@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useEventContext } from '../../context/EventContext';
 import { generateVendorInquiryApi } from '../../services/api';
+import { VendorInquiryRequest } from '../../types';
 import { 
   Send, 
   Sparkles, 
@@ -164,7 +165,7 @@ export const VendorInquiryModal: React.FC = () => {
                 type="button"
                 role="radio"
                 aria-checked={tone === t.id}
-                onClick={() => setTone(t.id as any)}
+                onClick={() => setTone(t.id as VendorInquiryRequest['tone'])}
                 className={`p-2.5 text-left rounded border transition-all focus:outline-none focus:ring-2 focus:ring-[#B4863A] ${
                   tone === t.id
                     ? 'bg-charcoal-900 text-white border-charcoal-900 shadow-xs'

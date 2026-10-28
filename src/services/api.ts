@@ -2,6 +2,7 @@ import {
   BudgetAdvisorRequest, 
   BudgetAdvisorResponse, 
   CelesteEvent, 
+  CreativeConcepts,
   EventGenerationRequest, 
   VendorInquiryRequest 
 } from '../types';
@@ -86,7 +87,7 @@ export async function generateCreativeIdeasApi(params: {
   season?: string;
   venueType?: string;
   notes?: string;
-}): Promise<any> {
+}): Promise<CreativeConcepts> {
   try {
     const res = await fetch(`${API_BASE}/creative-ideas`, {
       method: 'POST',
@@ -399,7 +400,7 @@ Céleste Haute Event Orchestration`;
   return { subject, body };
 }
 
-function fallbackCreativeIdeas(params: { theme: string; eventType: string }): any {
+function fallbackCreativeIdeas(params: { theme: string; eventType: string }): CreativeConcepts {
   return {
     conceptTitle: `${params.theme} — Haute Editorial Edition`,
     narrative: `A bespoke intersection of classical architectural harmony and contemporary sensory theatre. The ambiance balances muted natural textures with reflective bronze accents and an unhurried, ceremonial tempo.`,

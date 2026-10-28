@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useEventContext } from '../../context/EventContext';
 import { BudgetItem, BudgetStatus } from '../../types';
 import { 
@@ -52,37 +52,51 @@ export const BudgetView: React.FC = () => {
     'Contingency & Fees',
   ];
 
-  // Financial aggregates
-  const totalPlanned = currentEvent.budgetTotal || 1;
-  const totalCommitted = (currentEvent.budgetItems || []).reduce((sum, i) => sum + (i.committedAmount || 0), 0);
-  const totalPaid = (currentEvent.budgetItems || []).reduce((sum, i) => sum + (i.paidAmount || 0), 0);
-  const budgetVariance = totalCommitted - totalPlanned;
-  const guestCount = currentEvent.guestCount || 1;
-  const perGuestCommitted = Math.round(totalCommitted / guestCount);
-
-  // Filter items
-  const filteredItems = (currentEvent.budgetItems || []).filter((item) => {
-    if (selectedCategory !== 'All' && item.category !== selectedCategory) return false;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      return (
-        item.name.toLowerCase().includes(q) ||
-        item.notes.toLowerCase().includes(q) ||
-        item.assignedTo.toLowerCase().includes(q)
-      );
-    }
-    return true;
-  });
-
-  // Category breakdown cards
-  const categoryBreakdown = categories.slice(1).map((cat) => {
-    const items = (currentEvent.budgetItems || []).filter((i) => i.category === cat);
-    const planned = items.reduce((s, i) => s + (i.plannedAmount || 0), 0);
-    const committed = items.reduce((s, i) => s + (i.committedAmount || 0), 0);
-    const paid = items.reduce((s, i) => s + (i.paidAmount || 0), 0);
+  // Memoized Financial aggregates
+  const { totalPlanned, totalCommitted, totalPaid, budgetVariance, perGuestCommitted, guestCount } = useMemo(() => {
+    const planned = currentEvent.budgetTotal || 1;
+    const committed = (currentEvent.budgetItems || []).reduce((sum, i) => sum + (i.committedAmount || 0), 0);
+    const paid = (currentEvent.budgetItems || []).reduce((sum, i) => sum + (i.paidAmount || 0), 0);
     const variance = committed - planned;
-    return { category: cat, count: items.length, planned, committed, paid, variance };
-  }).filter(c => c.count > 0 || c.planned > 0);
+    const guests = currentEvent.guestCount || 1;
+    const perGuest = Math.round(committed / guests);
+    return {
+      totalPlanned: planned,
+      totalCommitted: committed,
+      totalPaid: paid,
+      budgetVariance: variance,
+      perGuestCommitted: perGuest,
+      guestCount: guests,
+    };
+  }, [currentEvent.budgetTotal, currentEvent.budgetItems, currentEvent.guestCount]);
+
+  // Memoized Filtered items
+  const filteredItems = useMemo(() => {
+    return (currentEvent.budgetItems || []).filter((item) => {
+      if (selectedCategory !== 'All' && item.category !== selectedCategory) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        return (
+          item.name.toLowerCase().includes(q) ||
+          item.notes.toLowerCase().includes(q) ||
+          item.assignedTo.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [currentEvent.budgetItems, selectedCategory, searchQuery]);
+
+  // Memoized Category breakdown cards
+  const categoryBreakdown = useMemo(() => {
+    return categories.slice(1).map((cat) => {
+      const items = (currentEvent.budgetItems || []).filter((i) => i.category === cat);
+      const planned = items.reduce((s, i) => s + (i.plannedAmount || 0), 0);
+      const committed = items.reduce((s, i) => s + (i.committedAmount || 0), 0);
+      const paid = items.reduce((s, i) => s + (i.paidAmount || 0), 0);
+      const variance = committed - planned;
+      return { category: cat, count: items.length, planned, committed, paid, variance };
+    }).filter(c => c.count > 0 || c.planned > 0);
+  }, [currentEvent.budgetItems]);
 
   const handleOpenAdd = (item?: BudgetItem) => {
     if (item) {
@@ -474,7 +488,7 @@ export const BudgetView: React.FC = () => {
                 </label>
                 <select
                   value={formCategory}
-                  onChange={(e) => setFormCategory(e.target.value as any)}
+                  onChange={(e) => setFormCategory(e.target.value as BudgetItem['category'])}
                   className="w-full px-3 py-2 text-xs border border-stone-200 rounded focus:border-[#B4863A] focus:outline-none bg-white"
                 >
                   {categories.slice(1).map((c) => (
@@ -545,7 +559,7 @@ export const BudgetView: React.FC = () => {
                   </label>
                   <select
                     value={formStatus}
-                    onChange={(e) => setFormStatus(e.target.value as any)}
+                    onChange={(e) => setFormStatus(e.target.value as BudgetStatus)}
                     className="w-full px-3 py-2 text-xs border border-stone-200 rounded focus:border-[#B4863A] focus:outline-none bg-white"
                   >
                     <option value="budgeted">Budgeted</option>

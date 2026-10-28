@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useEventContext } from '../../context/EventContext';
 import { generateCreativeIdeasApi } from '../../services/api';
+import { CreativeConcepts } from '../../types';
 import { 
   Compass, 
   Sparkles, 
@@ -26,7 +27,7 @@ export const CreativeView: React.FC = () => {
   const [brainstormSeason, setBrainstormSeason] = useState('Autumn Twilight');
   const [brainstormVenue, setBrainstormVenue] = useState('Historic Villa & Orangerie');
   const [brainstormNotes, setBrainstormNotes] = useState('');
-  const [generatedConcept, setGeneratedConcept] = useState<any | null>(null);
+  const [generatedConcept, setGeneratedConcept] = useState<CreativeConcepts | null>(null);
 
   const copyToClipboard = (hex: string) => {
     navigator.clipboard.writeText(hex);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useEventContext } from '../../context/EventContext';
 import { TimelineItem, TimelinePhase, TimelineRole, TimelineStatus } from '../../types';
 import { 
@@ -51,20 +51,23 @@ export const TimelineView: React.FC = () => {
     'Host & VIP',
   ];
 
-  const filteredTimeline = (currentEvent.timeline || []).filter((item) => {
-    if (item.phase !== activePhase) return false;
-    if (selectedRole !== 'All' && item.ownerRole !== selectedRole) return false;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      return (
-        item.title.toLowerCase().includes(q) ||
-        item.description.toLowerCase().includes(q) ||
-        item.location.toLowerCase().includes(q) ||
-        item.time.toLowerCase().includes(q)
-      );
-    }
-    return true;
-  });
+  // Memoized filtered timeline
+  const filteredTimeline = useMemo(() => {
+    return (currentEvent.timeline || []).filter((item) => {
+      if (item.phase !== activePhase) return false;
+      if (selectedRole !== 'All' && item.ownerRole !== selectedRole) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        return (
+          item.title.toLowerCase().includes(q) ||
+          item.description.toLowerCase().includes(q) ||
+          item.location.toLowerCase().includes(q) ||
+          item.time.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [currentEvent.timeline, activePhase, selectedRole, searchQuery]);
 
   const handleOpenAdd = (item?: TimelineItem) => {
     if (item) {
@@ -411,7 +414,7 @@ export const TimelineView: React.FC = () => {
                   </label>
                   <select
                     value={formOwnerRole}
-                    onChange={(e) => setFormOwnerRole(e.target.value as any)}
+                    onChange={(e) => setFormOwnerRole(e.target.value as TimelineItem['ownerRole'])}
                     className="w-full px-3 py-2 text-xs border border-stone-200 rounded focus:border-[#B4863A] focus:outline-none bg-white"
                   >
                     <option value="Lead Director">Lead Director</option>

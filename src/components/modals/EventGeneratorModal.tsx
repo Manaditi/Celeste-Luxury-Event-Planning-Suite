@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useEventContext } from '../../context/EventContext';
-import { EventType, CelesteEvent } from '../../types';
+import { EventType, CelesteEvent, BudgetItem, TimelineItem, VendorItem } from '../../types';
 import { generateEventPlanApi } from '../../services/api';
 import { DEFAULT_COLLABORATORS } from '../../data/benchmarkEvents';
 import { 
@@ -142,9 +142,9 @@ export const EventGeneratorModal: React.FC = () => {
           soundscape: 'Live classical cello and jazz quartet',
         },
         menuPairings: generatedPlan.menuPairings || [],
-        budgetItems: (generatedPlan.budgetItems as any) || [],
-        timeline: (generatedPlan.timeline as any) || [],
-        vendors: (generatedPlan.vendors as any) || [],
+        budgetItems: (generatedPlan.budgetItems as BudgetItem[]) || [],
+        timeline: (generatedPlan.timeline as TimelineItem[]) || [],
+        vendors: (generatedPlan.vendors as VendorItem[]) || [],
         collaborators: DEFAULT_COLLABORATORS,
         activityLogs: [
           {
@@ -161,9 +161,10 @@ export const EventGeneratorModal: React.FC = () => {
 
       addNewEvent(fullEvent);
       setIsGeneratorOpen(false);
-    } catch (err: any) {
-      console.error('Failed to generate event plan:', err);
-      alert('Generation encounter: ' + err.message);
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : 'Failed to generate plan';
+      console.error('Failed to generate event plan:', errMsg);
+      alert('Generation encountered an issue: ' + errMsg);
     } finally {
       setIsGenerating(false);
     }
@@ -250,7 +251,7 @@ export const EventGeneratorModal: React.FC = () => {
               <select
                 id="gen-type"
                 value={type}
-                onChange={(e) => setType(e.target.value as any)}
+                onChange={(e) => setType(e.target.value as EventType)}
                 className="w-full px-3 py-2 text-xs border border-stone-200 rounded focus:border-[#B4863A] focus:outline-none bg-white focus:ring-1 focus:ring-[#B4863A]"
               >
                 <option value="wedding">Luxury Wedding</option>

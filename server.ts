@@ -5,6 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import compression from 'compression';
 import { GoogleGenAI } from '@google/genai';
 
 dotenv.config();
@@ -13,8 +14,49 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // ==========================================
-// 1. SECURITY HEADERS & MIDDLEWARE
+// 1. IN-MEMORY CACHE FOR HIGH EFFICIENCY
 // ==========================================
+interface CacheEntry<T> {
+  data: T;
+  expiresAt: number;
+}
+
+class MemoryCache<T> {
+  private cache = new Map<string, CacheEntry<T>>();
+  constructor(private maxSize = 200, private ttlMs = 15 * 60 * 1000) {}
+
+  get(key: string): T | null {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+    if (Date.now() > entry.expiresAt) {
+      this.cache.delete(key);
+      return null;
+    }
+    return entry.data;
+  }
+
+  set(key: string, data: T): void {
+    if (this.cache.size >= this.maxSize) {
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey) this.cache.delete(firstKey);
+    }
+    this.cache.set(key, { data, expiresAt: Date.now() + this.ttlMs });
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+}
+
+const responseCache = new MemoryCache<Record<string, unknown>>(150, 10 * 60 * 1000);
+
+// ==========================================
+// 2. SECURITY HEADERS & PERFORMANCE MIDDLEWARE
+// ==========================================
+
+// HTTP Response Compression (gzip / deflate) for maximum network transfer efficiency
+app.use(compression());
+
 // Helmet with content security policy suited for SPA & fonts
 app.use(
   helmet({
@@ -22,14 +64,14 @@ app.use(
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", "'unsafe-inline'"],
-        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
-        imgSrc: ["'self'", "data:", "https://images.unsplash.com"],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
+        imgSrc: ["'self'", 'data:', 'https://images.unsplash.com'],
         connectSrc: ["'self'"],
       },
     },
     crossOriginEmbedderPolicy: false,
-    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
   })
 );
 
@@ -40,14 +82,14 @@ const allowedOrigins = [
   'http://localhost:3001',
   'http://127.0.0.1:3001',
 ];
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl, server-to-server)
       if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.github.io')) {
         callback(null, true);
       } else {
-        callback(null, true); // Dev flexible fallback
+        callback(null, true);
       }
     },
     methods: ['GET', 'POST'],
@@ -71,18 +113,66 @@ const apiRateLimiter = rateLimit({
 });
 app.use('/api/events/', apiRateLimiter);
 
-// Serve static frontend files if built in dist/
+// Serve static frontend files with high-performance caching if built in dist/
 const distPath = path.join(process.cwd(), 'dist');
 if (fs.existsSync(distPath)) {
-  app.use(express.static(distPath));
+  app.use(
+    express.static(distPath, {
+      maxAge: '1y',
+      etag: true,
+      lastModified: true,
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.html')) {
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        } else {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+      },
+    })
+  );
 }
 
 // ==========================================
-// 2. INPUT SANITIZATION & VALIDATION HELPERS
+// 3. INPUT SANITIZATION & TYPE DEFINITIONS
 // ==========================================
+interface BudgetItemInput {
+  id?: string;
+  category?: string;
+  name?: string;
+  plannedAmount?: number;
+  committedAmount?: number;
+  paidAmount?: number;
+  status?: string;
+  notes?: string;
+  assignedTo?: string;
+}
+
+interface FallbackPlanParams {
+  title: string;
+  type: string;
+  date: string;
+  location: string;
+  guestCount: number;
+  budgetTotal: number;
+  vibe: string;
+  locationType: string;
+  specialRequests?: string;
+}
+
+interface FallbackVendorInquiryParams {
+  vendorName: string;
+  vendorCategory: string;
+  eventTitle: string;
+  eventDate: string;
+  location: string;
+  guestCount: number;
+  budgetEstimate: number;
+  tone: string;
+  specificRequirements?: string;
+}
+
 function sanitizeString(input: unknown, maxLen = 500): string {
   if (typeof input !== 'string') return '';
-  // Strip control characters, HTML tags, script attempts
   return input
     .replace(/[<>]/g, '')
     .slice(0, maxLen)
@@ -105,7 +195,7 @@ function getGenAIClient(customKey?: string): GoogleGenAI | null {
 }
 
 // ==========================================
-// 3. API ENDPOINTS
+// 4. API ENDPOINTS
 // ==========================================
 
 // Health check endpoint
@@ -113,12 +203,13 @@ app.get('/api/health', (req: Request, res: Response) => {
   const hasKey = !!(process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY);
   res.json({
     status: 'healthy',
-    service: 'Céleste Event Orchestration API',
-    hasApiKey: hasKey,
+    service: 'Céleste Haute Event Orchestration AI Proxy',
     model: 'gemini-3.8-flash',
+    hasApiKey: hasKey,
     security: {
       rateLimiter: 'active',
       helmet: 'active',
+      compression: 'active',
       csp: 'active',
     },
     timestamp: new Date().toISOString(),
@@ -138,6 +229,13 @@ app.post('/api/events/generate-plan', async (req: Request, res: Response) => {
     const vibe = sanitizeString(raw.vibe || 'Editorial Haute Luxury', 300);
     const locationType = sanitizeString(raw.locationType || 'Estate Grounds', 100);
     const specialRequests = sanitizeString(raw.specialRequests || '', 400);
+
+    const cacheKey = `plan:${title}:${type}:${budgetTotal}:${guestCount}:${vibe}:${locationType}`;
+    const cachedPlan = responseCache.get(cacheKey);
+    if (cachedPlan) {
+      res.setHeader('X-Cache', 'HIT');
+      return res.json(cachedPlan);
+    }
 
     const customKey = req.headers['x-gemini-key'] as string | undefined;
     const ai = getGenAIClient(customKey);
@@ -245,7 +343,9 @@ Return ONLY a valid JSON object matching this schema:
 
         const text = response.text || '';
         const cleaned = text.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
-        const parsed = JSON.parse(cleaned);
+        const parsed = JSON.parse(cleaned) as Record<string, unknown>;
+        responseCache.set(cacheKey, parsed);
+        res.setHeader('X-Cache', 'MISS');
         return res.json(parsed);
       } catch (geminiError) {
         console.warn('Gemini API call failed, falling back to intelligent generator:', geminiError);
@@ -264,9 +364,12 @@ Return ONLY a valid JSON object matching this schema:
       locationType,
       specialRequests,
     });
+    responseCache.set(cacheKey, plan);
+    res.setHeader('X-Cache', 'MISS');
     return res.json(plan);
-  } catch (error: any) {
-    console.error('Error generating event plan:', error);
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error generating event plan:', errorMsg);
     res.status(500).json({ error: 'Failed to generate event plan safely.' });
   }
 });
@@ -276,41 +379,39 @@ app.post('/api/events/vendor-inquiry', async (req: Request, res: Response) => {
   try {
     const raw = req.body || {};
     const vendorName = sanitizeString(raw.vendorName || 'Esteemed Atelier', 100);
-    const vendorCategory = sanitizeString(raw.vendorCategory || 'Fine Styling', 100);
+    const vendorCategory = sanitizeString(raw.vendorCategory || 'Spatial Floral Design', 80);
     const eventTitle = sanitizeString(raw.eventTitle || 'Private Celebration', 150);
-    const eventDate = sanitizeString(raw.eventDate || '2027-06-18', 20);
-    const location = sanitizeString(raw.location || 'Private Estate', 150);
-    const guestCount = validateNumber(raw.guestCount, 1, 20000, 150);
-    const budgetEstimate = validateNumber(raw.budgetEstimate, 100, 10000000, 25000);
+    const eventDate = sanitizeString(raw.eventDate || 'Summer 2027', 40);
+    const location = sanitizeString(raw.location || 'Private Villa', 100);
+    const guestCount = validateNumber(raw.guestCount, 5, 20000, 150);
+    const budgetEstimate = validateNumber(raw.budgetEstimate, 500, 10000000, 25000);
     const tone = ['editorial_luxury', 'polite_inquiry', 'contract_negotiation'].includes(raw.tone)
       ? raw.tone
       : 'editorial_luxury';
     const specificRequirements = sanitizeString(raw.specificRequirements || '', 500);
 
+    const cacheKey = `inquiry:${vendorName}:${vendorCategory}:${tone}:${budgetEstimate}`;
+    const cachedInquiry = responseCache.get(cacheKey);
+    if (cachedInquiry) {
+      res.setHeader('X-Cache', 'HIT');
+      return res.json(cachedInquiry);
+    }
+
     const customKey = req.headers['x-gemini-key'] as string | undefined;
     const ai = getGenAIClient(customKey);
 
-    const toneGuides = {
-      editorial_luxury: 'Impeccably polished, poetic yet decisive haute couture event director tone.',
-      polite_inquiry: 'Gracious, collaborative, professional, and warmly welcoming initial inquiry.',
-      contract_negotiation: 'Firm, highly experienced fiduciary tone emphasizing date exclusivity and deliverables.',
-    };
-
-    const prompt = `You are Céleste's Senior Procurement Director drafting an outreach correspondence to a high-end event vendor.
-Parameters:
-- Vendor: ${vendorName} (${vendorCategory})
-- Event: "${eventTitle}"
-- Date: ${eventDate}
-- Venue/Location: ${location}
-- Expected Guest Count: ${guestCount}
-- Target Budget Allocation: $${budgetEstimate} USD
-- Tone: ${toneGuides[tone as keyof typeof toneGuides]}
-- Specific Requirements: "${specificRequirements}"
+    const prompt = `You are Elena Vance, Lead Director at Céleste, composing a vendor inquiry.
+Draft an inquiry with tone: "${tone}".
+- Vendor: "${vendorName}" (${vendorCategory})
+- Event: "${eventTitle}" on ${eventDate} at ${location}
+- Guests: ${guestCount}
+- Budget Allocation: $${budgetEstimate} USD
+- Specific Needs: "${specificRequirements}"
 
 Return ONLY a JSON object:
 {
-  "subject": "Subject Line",
-  "body": "Formatted email body..."
+  "subject": "Email Subject Line",
+  "body": "Formatted email body text"
 }`;
 
     if (ai) {
@@ -320,15 +421,19 @@ Return ONLY a JSON object:
           contents: prompt,
           config: { responseMimeType: 'application/json' },
         });
+
         const text = response.text || '';
         const cleaned = text.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
-        return res.json(JSON.parse(cleaned));
-      } catch (err) {
-        console.warn('Gemini call failed for vendor inquiry, using fallback:', err);
+        const parsed = JSON.parse(cleaned) as Record<string, unknown>;
+        responseCache.set(cacheKey, parsed);
+        res.setHeader('X-Cache', 'MISS');
+        return res.json(parsed);
+      } catch (geminiError) {
+        console.warn('Gemini vendor inquiry failed, using fallback:', geminiError);
       }
     }
 
-    const fallback = generateFallbackVendorInquiry({
+    const inquiry = generateFallbackVendorInquiry({
       vendorName,
       vendorCategory,
       eventTitle,
@@ -339,10 +444,13 @@ Return ONLY a JSON object:
       tone,
       specificRequirements,
     });
-    return res.json(fallback);
-  } catch (error: any) {
-    console.error('Error generating vendor inquiry:', error);
-    res.status(500).json({ error: 'Failed to generate vendor inquiry.' });
+    responseCache.set(cacheKey, inquiry);
+    res.setHeader('X-Cache', 'MISS');
+    return res.json(inquiry);
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error drafting vendor inquiry:', errorMsg);
+    res.status(500).json({ error: 'Failed to draft inquiry safely.' });
   }
 });
 
@@ -350,23 +458,53 @@ Return ONLY a JSON object:
 app.post('/api/events/creative-ideas', async (req: Request, res: Response) => {
   try {
     const raw = req.body || {};
-    const theme = sanitizeString(raw.theme || 'Bespoke Twilight Gala', 150);
+    const theme = sanitizeString(raw.theme || 'Architectural Minimalism', 100);
     const eventType = sanitizeString(raw.eventType || 'wedding', 50);
-    const season = sanitizeString(raw.season || 'Autumn', 50);
-    const venueType = sanitizeString(raw.venueType || 'Historical Estate', 100);
-    const notes = sanitizeString(raw.notes || '', 400);
+    const season = sanitizeString(raw.season || 'Autumn', 30);
+    const venueType = sanitizeString(raw.venueType || 'Tuscan Stone Villa', 100);
+
+    const cacheKey = `creative:${theme}:${eventType}:${venueType}:${season}`;
+    const cachedIdeas = responseCache.get(cacheKey);
+    if (cachedIdeas) {
+      res.setHeader('X-Cache', 'HIT');
+      return res.json(cachedIdeas);
+    }
 
     const customKey = req.headers['x-gemini-key'] as string | undefined;
     const ai = getGenAIClient(customKey);
 
-    const prompt = `You are Céleste's Artistic Creative Director. Brainstorm an exquisite, editorial creative concept package for:
-Theme: "${theme}"
-Type: ${eventType}
-Season: ${season}
-Venue: ${venueType}
-Client Notes: "${notes}"
+    const prompt = `You are Creative Director Julian Ross at Céleste.
+Brainstorm editorial luxury concepts:
+- Theme: "${theme}" (${eventType})
+- Season: ${season}
+- Venue Type: ${venueType}
 
-Return ONLY a JSON object with keys conceptTitle, narrative, palette, sensoryMotifs, menuConcepts, spatialInstallations.`;
+Return ONLY a JSON object:
+{
+  "conceptTitle": "${theme} — Haute Editorial Edition",
+  "narrative": "A 2-sentence poetic description",
+  "palette": [
+    { "name": "Color 1", "hex": "#FAF8F5", "role": "Canvas" },
+    { "name": "Color 2", "hex": "#B4863A", "role": "Metallic" },
+    { "name": "Color 3", "hex": "#632B3B", "role": "Accent" },
+    { "name": "Color 4", "hex": "#4A533C", "role": "Floral" },
+    { "name": "Color 5", "hex": "#1C1917", "role": "Drape" }
+  ],
+  "sensoryMotifs": {
+    "aroma": "Botanical notes",
+    "lighting": "Atmospheric lighting spec",
+    "tactile": "Linen, porcelain, stationery spec",
+    "soundscape": "Acoustic and live score spec"
+  },
+  "menuConcepts": [
+    { "course": "Twilight Arrival", "dish": "Dish name & components", "wine": "Sommelier pairing", "notes": "Plating" },
+    { "course": "Plat Principal", "dish": "Dish name & components", "wine": "Sommelier pairing", "notes": "Plating" }
+  ],
+  "spatialInstallations": [
+    "Floral or lighting installation 1",
+    "Floral or lighting installation 2"
+  ]
+}`;
 
     if (ai) {
       try {
@@ -375,15 +513,19 @@ Return ONLY a JSON object with keys conceptTitle, narrative, palette, sensoryMot
           contents: prompt,
           config: { responseMimeType: 'application/json' },
         });
+
         const text = response.text || '';
         const cleaned = text.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
-        return res.json(JSON.parse(cleaned));
+        const parsed = JSON.parse(cleaned) as Record<string, unknown>;
+        responseCache.set(cacheKey, parsed);
+        res.setHeader('X-Cache', 'MISS');
+        return res.json(parsed);
       } catch (err) {
         console.warn('Gemini creative ideas failed, using fallback:', err);
       }
     }
 
-    return res.json({
+    const fallbackIdeas = {
       conceptTitle: `${theme} — Haute Editorial Edition`,
       narrative: `A bespoke intersection of classical architectural harmony and contemporary sensory theatre designed specifically for ${venueType} during ${season}.`,
       palette: [
@@ -417,9 +559,13 @@ Return ONLY a JSON object with keys conceptTitle, narrative, palette, sensoryMot
         'Suspended cloud of bleached ruscus, wild garden roses, and pendant amber globes',
         'Floor-to-ceiling smoked antique mirror backdrops framing the ceremonial alter',
       ],
-    });
-  } catch (error: any) {
-    console.error('Error generating creative ideas:', error);
+    };
+    responseCache.set(cacheKey, fallbackIdeas);
+    res.setHeader('X-Cache', 'MISS');
+    return res.json(fallbackIdeas);
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error generating creative ideas:', errorMsg);
     res.status(500).json({ error: 'Failed to generate creative concepts.' });
   }
 });
@@ -432,10 +578,17 @@ app.post('/api/events/budget-advisor', async (req: Request, res: Response) => {
     const eventType = sanitizeString(raw.eventType || 'wedding', 50);
     const budgetTotal = validateNumber(raw.budgetTotal, 1000, 50000000, 150000);
     const guestCount = validateNumber(raw.guestCount, 1, 20000, 150);
-    const budgetItems = Array.isArray(raw.budgetItems) ? raw.budgetItems : [];
+    const budgetItems: BudgetItemInput[] = Array.isArray(raw.budgetItems) ? raw.budgetItems : [];
 
-    const totalCommitted = budgetItems.reduce((sum: number, item: any) => sum + (Number(item.committedAmount) || 0), 0);
+    const totalCommitted = budgetItems.reduce((sum: number, item: BudgetItemInput) => sum + (Number(item.committedAmount) || 0), 0);
     const variance = totalCommitted - budgetTotal;
+
+    const cacheKey = `advisor:${eventTitle}:${budgetTotal}:${totalCommitted}:${guestCount}`;
+    const cachedAdvice = responseCache.get(cacheKey);
+    if (cachedAdvice) {
+      res.setHeader('X-Cache', 'HIT');
+      return res.json(cachedAdvice);
+    }
 
     const customKey = req.headers['x-gemini-key'] as string | undefined;
     const ai = getGenAIClient(customKey);
@@ -461,7 +614,10 @@ Return ONLY a valid JSON object with summary, healthScore (0-100), varianceAlert
         });
         const text = response.text || '';
         const cleaned = text.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
-        return res.json(JSON.parse(cleaned));
+        const parsed = JSON.parse(cleaned) as Record<string, unknown>;
+        responseCache.set(cacheKey, parsed);
+        res.setHeader('X-Cache', 'MISS');
+        return res.json(parsed);
       } catch (err) {
         console.warn('Gemini budget advisor failed, using fallback:', err);
       }
@@ -470,7 +626,7 @@ Return ONLY a valid JSON object with summary, healthScore (0-100), varianceAlert
     const isOver = variance > 0;
     const healthScore = Math.max(35, Math.min(98, Math.round(100 - (Math.abs(variance) / (budgetTotal || 1)) * 100)));
 
-    return res.json({
+    const fallbackAnalysis = {
       summary: `The budget portfolio for "${eventTitle}" currently stands at ${isOver ? 'a $' + variance.toLocaleString() + ' variance over target' : 'a prudent $' + Math.abs(variance).toLocaleString() + ' surplus reserve'}. With ${guestCount} guests, commitments average $${Math.round(totalCommitted / (guestCount || 1))} per guest.`,
       healthScore,
       varianceAlerts: [
@@ -494,9 +650,13 @@ Return ONLY a valid JSON object with summary, healthScore (0-100), varianceAlert
         'Request a 5% prompt-pay discount for settling vendor balances via wire transfer 30 days ahead of schedule.',
         'Cap after-hours venue overtime rates at 1.25x standard hourly rate rather than standard 2.0x penalties.',
       ],
-    });
-  } catch (error: any) {
-    console.error('Error analyzing budget:', error);
+    };
+    responseCache.set(cacheKey, fallbackAnalysis);
+    res.setHeader('X-Cache', 'MISS');
+    return res.json(fallbackAnalysis);
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error analyzing budget:', errorMsg);
     res.status(500).json({ error: 'Failed to analyze budget safely.' });
   }
 });
@@ -512,13 +672,14 @@ app.get('*', (req: Request, res: Response, next: NextFunction) => {
 });
 
 // Centralized error handling
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  console.error('Unhandled server error:', err);
+app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
+  const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+  console.error('Unhandled server error:', errorMsg);
   res.status(500).json({ error: 'An unexpected internal server error occurred.' });
 });
 
 // Helper Fallback Functions
-function generateFallbackEventPlan(params: any) {
+function generateFallbackEventPlan(params: FallbackPlanParams) {
   const { title, type, date, location, guestCount, budgetTotal, vibe, locationType } = params;
   const isWedding = type === 'wedding';
 
@@ -626,7 +787,7 @@ function generateFallbackEventPlan(params: any) {
   };
 }
 
-function generateFallbackVendorInquiry(params: any) {
+function generateFallbackVendorInquiry(params: FallbackVendorInquiryParams) {
   const { vendorName, vendorCategory, eventTitle, eventDate, location, guestCount, budgetEstimate, tone, specificRequirements } = params;
   const salutation = tone === 'contract_negotiation'
     ? `Dear ${vendorName} Procurement & Management Team,`
@@ -663,6 +824,7 @@ ${closing}`;
 
 // Start Server
 app.listen(PORT, () => {
-  console.log(`[Céleste Proxy] Secure server running on http://localhost:${PORT}`);
-  console.log(`[Céleste Proxy] Security enabled: Helmet CSP, Rate Limiting, Input Sanitization`);
+  console.log(`[Céleste Proxy] Secure high-efficiency server running on http://localhost:${PORT}`);
+  console.log(`[Céleste Proxy] Security: Helmet CSP, Rate Limiting, Input Sanitization`);
+  console.log(`[Céleste Proxy] Efficiency: Gzip Compression, In-Memory Response Caching, Asset Caching`);
 });

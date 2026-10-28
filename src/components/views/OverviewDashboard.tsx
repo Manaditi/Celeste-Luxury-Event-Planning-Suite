@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useEventContext } from '../../context/EventContext';
 import { 
   Sparkles, 
@@ -41,18 +41,20 @@ export const OverviewDashboard: React.FC = () => {
     setTimeout(() => setCopiedHex(null), 1800);
   };
 
-  // Immediate upcoming timeline items
-  const upcomingItems = (currentEvent.timeline || [])
-    .filter(t => t.status !== 'completed')
-    .slice(0, 4);
+  // Memoized immediate upcoming timeline items
+  const upcomingItems = useMemo(() => {
+    return (currentEvent.timeline || [])
+      .filter(t => t.status !== 'completed')
+      .slice(0, 4);
+  }, [currentEvent.timeline]);
 
-  // Key budget items
-  const keyBudgetItems = (currentEvent.budgetItems || [])
-    .slice()
-    .sort((a, b) => b.committedAmount - a.committedAmount)
-    .slice(0, 5);
-
-  const totalCommitted = currentEvent.budgetItems?.reduce((sum, item) => sum + item.committedAmount, 0) || 1;
+  // Memoized key budget items
+  const { keyBudgetItems, totalCommitted } = useMemo(() => {
+    const items = currentEvent.budgetItems || [];
+    const sorted = items.slice().sort((a, b) => b.committedAmount - a.committedAmount).slice(0, 5);
+    const sum = items.reduce((total, item) => total + (item.committedAmount || 0), 0) || 1;
+    return { keyBudgetItems: sorted, totalCommitted: sum };
+  }, [currentEvent.budgetItems]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-200">

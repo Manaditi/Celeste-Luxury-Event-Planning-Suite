@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useEventContext } from '../../context/EventContext';
 import { Collaborator } from '../../types';
 import { 
@@ -43,7 +43,9 @@ export const TeamRoomView: React.FC = () => {
   };
 
   const collaborators = currentEvent.collaborators || [];
-  const activeCount = collaborators.filter(c => c.status !== 'away').length;
+  const activeCount = useMemo(() => {
+    return collaborators.filter(c => c.status !== 'away').length;
+  }, [collaborators]);
 
   const statusIndicator = (status: Collaborator['status']) => {
     switch (status) {
@@ -58,11 +60,13 @@ export const TeamRoomView: React.FC = () => {
     }
   };
 
-  const filteredLogs = (currentEvent.activityLogs || []).filter((log) => {
-    if (selectedCollaboratorId === 'all') return true;
-    const author = collaborators.find(c => c.id === selectedCollaboratorId);
-    return author && log.authorName === author.name;
-  });
+  const filteredLogs = useMemo(() => {
+    return (currentEvent.activityLogs || []).filter((log) => {
+      if (selectedCollaboratorId === 'all') return true;
+      const author = collaborators.find(c => c.id === selectedCollaboratorId);
+      return author && log.authorName === author.name;
+    });
+  }, [currentEvent.activityLogs, selectedCollaboratorId, collaborators]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">

@@ -54,7 +54,7 @@ export const TopBar: React.FC = () => {
   interface NavItem {
     id: 'overview' | 'timeline' | 'budget' | 'vendors' | 'creative' | 'team';
     label: string;
-    icon: any;
+    icon: React.ComponentType<{ className?: string }>;
     badge?: string;
   }
 

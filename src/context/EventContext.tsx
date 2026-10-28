@@ -1,15 +1,24 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
+import React, { 
+  createContext, 
+  useContext, 
+  useState, 
+  useEffect, 
+  useCallback,
+  useMemo,
+  ReactNode 
+} from 'react';
 import { 
   CelesteEvent, 
   BudgetItem, 
   TimelineItem, 
   VendorItem, 
-  ActivityLog, 
-  Collaborator 
+  Collaborator, 
+  ActivityLog 
 } from '../types';
-import { BENCHMARK_EVENTS, DEFAULT_COLLABORATORS } from '../data/benchmarkEvents';
+import { BENCHMARK_EVENTS } from '../data/benchmarkEvents';
+import { safeJsonParse } from '../utils/performance';
 
-type ActiveView = 'overview' | 'timeline' | 'budget' | 'vendors' | 'creative' | 'team';
+export type ActiveView = 'overview' | 'timeline' | 'budget' | 'vendors' | 'creative' | 'team';
 
 interface EventContextType {
   events: CelesteEvent[];
@@ -21,31 +30,31 @@ interface EventContextType {
   addNewEvent: (event: CelesteEvent) => void;
   resetToBenchmarks: () => void;
   updateEventDetails: (updates: Partial<CelesteEvent>) => void;
-  
-  // Budget handlers
+
+  // Budget
   addBudgetItem: (item: Omit<BudgetItem, 'id'>) => void;
   updateBudgetItem: (id: string, updates: Partial<BudgetItem>) => void;
   deleteBudgetItem: (id: string) => void;
-  
-  // Timeline handlers
+
+  // Timeline
   addTimelineItem: (item: Omit<TimelineItem, 'id'>) => void;
   updateTimelineItem: (id: string, updates: Partial<TimelineItem>) => void;
   toggleTimelineStatus: (id: string) => void;
   deleteTimelineItem: (id: string) => void;
-  
-  // Vendor handlers
+
+  // Vendors
   addVendorItem: (vendor: Omit<VendorItem, 'id'>) => void;
   updateVendorItem: (id: string, updates: Partial<VendorItem>) => void;
   deleteVendorItem: (id: string) => void;
   toggleVendorTask: (vendorId: string, taskId: string) => void;
-  
-  // Collaboration & Team handlers
+
+  // Team & Simulation
   isSimulationActive: boolean;
   setIsSimulationActive: (active: boolean) => void;
   simulationSpeed: 'realistic' | 'fast';
   setSimulationSpeed: (speed: 'realistic' | 'fast') => void;
   postChatMessage: (message: string, authorName?: string, role?: string) => void;
-  triggerSimulatedAction: (type?: string) => void;
+  triggerSimulatedAction: (customType?: string) => void;
   updateCollaboratorStatus: (collabId: string, status: Collaborator['status'], activeCard?: string) => void;
 
   // Active Modals state
@@ -66,16 +75,9 @@ const EventContext = createContext<EventContextType | undefined>(undefined);
 
 export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [events, setEvents] = useState<CelesteEvent[]>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY_EVENTS);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch (e) {
-      console.warn('Could not parse stored events, resetting to benchmarks:', e);
-    }
-    return BENCHMARK_EVENTS;
+    const stored = localStorage.getItem(STORAGE_KEY_EVENTS);
+    const parsed = safeJsonParse<CelesteEvent[]>(stored, []);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : BENCHMARK_EVENTS;
   });
 
   const [currentEventId, setCurrentEventId] = useState<string>(() => {
@@ -101,55 +103,58 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       localStorage.setItem(STORAGE_KEY_EVENTS, JSON.stringify(events));
       localStorage.setItem(STORAGE_KEY_CURRENT_ID, currentEventId);
-    } catch (e) {
-      console.warn('Failed to save to localStorage:', e);
+    } catch {
+      // Graceful storage quota fallback
     }
   }, [events, currentEventId]);
 
-  const currentEvent = events.find(e => e.id === currentEventId) || events[0] || BENCHMARK_EVENTS[0];
+  // Memoized current event
+  const currentEvent = useMemo(() => {
+    return events.find(e => e.id === currentEventId) || events[0] || BENCHMARK_EVENTS[0];
+  }, [events, currentEventId]);
 
-  const selectEvent = (id: string) => {
+  const selectEvent = useCallback((id: string) => {
     if (events.some(e => e.id === id)) {
       setCurrentEventId(id);
     }
-  };
+  }, [events]);
 
-  const addNewEvent = (newEvent: CelesteEvent) => {
+  const addNewEvent = useCallback((newEvent: CelesteEvent) => {
     setEvents(prev => [newEvent, ...prev]);
     setCurrentEventId(newEvent.id);
     setActiveView('overview');
-  };
+  }, []);
 
-  const resetToBenchmarks = () => {
+  const resetToBenchmarks = useCallback(() => {
     setEvents(BENCHMARK_EVENTS);
     setCurrentEventId(BENCHMARK_EVENTS[0].id);
     localStorage.removeItem(STORAGE_KEY_EVENTS);
     localStorage.removeItem(STORAGE_KEY_CURRENT_ID);
-  };
+  }, []);
 
-  const updateCurrentEvent = (updater: (prev: CelesteEvent) => CelesteEvent) => {
+  const updateCurrentEvent = useCallback((updater: (prev: CelesteEvent) => CelesteEvent) => {
     setEvents(prev => prev.map(ev => ev.id === currentEventId ? updater(ev) : ev));
-  };
+  }, [currentEventId]);
 
-  const updateEventDetails = (updates: Partial<CelesteEvent>) => {
+  const updateEventDetails = useCallback((updates: Partial<CelesteEvent>) => {
     updateCurrentEvent(prev => ({ ...prev, ...updates }));
-  };
+  }, [updateCurrentEvent]);
 
   // Log activity helper
-  const logActivity = (log: Omit<ActivityLog, 'id' | 'timestamp'>) => {
+  const logActivity = useCallback((log: Omit<ActivityLog, 'id' | 'timestamp'>) => {
     const newLog: ActivityLog = {
       ...log,
-      id: `act-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      id: `act-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       timestamp: 'Just now',
     };
     updateCurrentEvent(prev => ({
       ...prev,
       activityLogs: [newLog, ...(prev.activityLogs || [])].slice(0, 30),
     }));
-  };
+  }, [updateCurrentEvent]);
 
   // Budget Handlers
-  const addBudgetItem = (item: Omit<BudgetItem, 'id'>) => {
+  const addBudgetItem = useCallback((item: Omit<BudgetItem, 'id'>) => {
     const id = `b-${Date.now()}`;
     const newItem: BudgetItem = { ...item, id };
     updateCurrentEvent(prev => ({
@@ -163,16 +168,16 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       detail: `Added new budget line item "${newItem.name}" allocated for $${newItem.plannedAmount.toLocaleString()}.`,
       badge: 'Budget Added',
     });
-  };
+  }, [updateCurrentEvent, logActivity]);
 
-  const updateBudgetItem = (id: string, updates: Partial<BudgetItem>) => {
+  const updateBudgetItem = useCallback((id: string, updates: Partial<BudgetItem>) => {
     updateCurrentEvent(prev => ({
       ...prev,
       budgetItems: prev.budgetItems.map(item => item.id === id ? { ...item, ...updates } : item),
     }));
-  };
+  }, [updateCurrentEvent]);
 
-  const deleteBudgetItem = (id: string) => {
+  const deleteBudgetItem = useCallback((id: string) => {
     const item = currentEvent.budgetItems.find(i => i.id === id);
     updateCurrentEvent(prev => ({
       ...prev,
@@ -187,10 +192,10 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         badge: 'Budget Removed',
       });
     }
-  };
+  }, [currentEvent.budgetItems, updateCurrentEvent, logActivity]);
 
   // Timeline Handlers
-  const addTimelineItem = (item: Omit<TimelineItem, 'id'>) => {
+  const addTimelineItem = useCallback((item: Omit<TimelineItem, 'id'>) => {
     const id = `t-${Date.now()}`;
     const newItem: TimelineItem = { ...item, id };
     updateCurrentEvent(prev => ({
@@ -204,16 +209,16 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       detail: `Created run-of-show entry "${newItem.title}" scheduled for ${newItem.time}.`,
       badge: 'Timeline Created',
     });
-  };
+  }, [updateCurrentEvent, logActivity]);
 
-  const updateTimelineItem = (id: string, updates: Partial<TimelineItem>) => {
+  const updateTimelineItem = useCallback((id: string, updates: Partial<TimelineItem>) => {
     updateCurrentEvent(prev => ({
       ...prev,
       timeline: prev.timeline.map(item => item.id === id ? { ...item, ...updates } : item),
     }));
-  };
+  }, [updateCurrentEvent]);
 
-  const toggleTimelineStatus = (id: string) => {
+  const toggleTimelineStatus = useCallback((id: string) => {
     const statuses: TimelineItem['status'][] = ['pending', 'in_progress', 'completed', 'delayed'];
     const item = currentEvent.timeline.find(t => t.id === id);
     if (!item) return;
@@ -229,17 +234,17 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       detail: `Updated status of "${item.title}" to ${nextStatus.replace('_', ' ').toUpperCase()}.`,
       badge: 'Status Update',
     });
-  };
+  }, [currentEvent.timeline, updateTimelineItem, logActivity]);
 
-  const deleteTimelineItem = (id: string) => {
+  const deleteTimelineItem = useCallback((id: string) => {
     updateCurrentEvent(prev => ({
       ...prev,
       timeline: prev.timeline.filter(t => t.id !== id),
     }));
-  };
+  }, [updateCurrentEvent]);
 
   // Vendor Handlers
-  const addVendorItem = (vendor: Omit<VendorItem, 'id'>) => {
+  const addVendorItem = useCallback((vendor: Omit<VendorItem, 'id'>) => {
     const id = `v-${Date.now()}`;
     const newVendor: VendorItem = { ...vendor, id };
     updateCurrentEvent(prev => ({
@@ -253,23 +258,23 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       detail: `Onboarded vendor ${newVendor.companyName} (${newVendor.category}) to procurement directory.`,
       badge: 'Vendor Added',
     });
-  };
+  }, [updateCurrentEvent, logActivity]);
 
-  const updateVendorItem = (id: string, updates: Partial<VendorItem>) => {
+  const updateVendorItem = useCallback((id: string, updates: Partial<VendorItem>) => {
     updateCurrentEvent(prev => ({
       ...prev,
       vendors: prev.vendors.map(v => v.id === id ? { ...v, ...updates } : v),
     }));
-  };
+  }, [updateCurrentEvent]);
 
-  const deleteVendorItem = (id: string) => {
+  const deleteVendorItem = useCallback((id: string) => {
     updateCurrentEvent(prev => ({
       ...prev,
       vendors: prev.vendors.filter(v => v.id !== id),
     }));
-  };
+  }, [updateCurrentEvent]);
 
-  const toggleVendorTask = (vendorId: string, taskId: string) => {
+  const toggleVendorTask = useCallback((vendorId: string, taskId: string) => {
     updateCurrentEvent(prev => ({
       ...prev,
       vendors: prev.vendors.map(v => {
@@ -280,10 +285,10 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         };
       }),
     }));
-  };
+  }, [updateCurrentEvent]);
 
   // Team & Simulation
-  const postChatMessage = (message: string, authorName = 'Host (You)', role = 'Host & Creative Principal') => {
+  const postChatMessage = useCallback((message: string, authorName = 'Host (You)', role = 'Host & Creative Principal') => {
     if (!message.trim()) return;
     logActivity({
       authorName,
@@ -292,18 +297,18 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       detail: message.trim(),
       badge: 'Message',
     });
-  };
+  }, [logActivity]);
 
-  const updateCollaboratorStatus = (collabId: string, status: Collaborator['status'], activeCard?: string) => {
+  const updateCollaboratorStatus = useCallback((collabId: string, status: Collaborator['status'], activeCard?: string) => {
     updateCurrentEvent(prev => ({
       ...prev,
       collaborators: prev.collaborators.map(c => 
         c.id === collabId ? { ...c, status, ...(activeCard ? { activeCard } : {}) } : c
       ),
     }));
-  };
+  }, [updateCurrentEvent]);
 
-  const triggerSimulatedAction = (customType?: string) => {
+  const triggerSimulatedAction = useCallback(() => {
     const simulatedActions = [
       () => {
         const item = currentEvent.budgetItems[Math.floor(Math.random() * currentEvent.budgetItems.length)];
@@ -377,7 +382,7 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const randomAction = simulatedActions[Math.floor(Math.random() * simulatedActions.length)];
     randomAction();
-  };
+  }, [currentEvent, updateBudgetItem, logActivity, updateCollaboratorStatus, updateTimelineItem, toggleVendorTask]);
 
   // Auto-simulation timer
   useEffect(() => {
@@ -387,54 +392,84 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       triggerSimulatedAction();
     }, intervalMs);
     return () => clearInterval(timer);
-  }, [isSimulationActive, simulationSpeed, currentEventId]);
+  }, [isSimulationActive, simulationSpeed, triggerSimulatedAction]);
+
+  // Memoized context value to prevent unneeded subscriber rerenders
+  const contextValue = useMemo<EventContextType>(() => ({
+    events,
+    currentEvent,
+    currentEventId,
+    activeView,
+    setActiveView,
+    selectEvent,
+    addNewEvent,
+    resetToBenchmarks,
+    updateEventDetails,
+    addBudgetItem,
+    updateBudgetItem,
+    deleteBudgetItem,
+    addTimelineItem,
+    updateTimelineItem,
+    toggleTimelineStatus,
+    deleteTimelineItem,
+    addVendorItem,
+    updateVendorItem,
+    deleteVendorItem,
+    toggleVendorTask,
+    isSimulationActive,
+    setIsSimulationActive,
+    simulationSpeed,
+    setSimulationSpeed,
+    postChatMessage,
+    triggerSimulatedAction,
+    updateCollaboratorStatus,
+    isGeneratorOpen,
+    setIsGeneratorOpen,
+    isBudgetAdvisorOpen,
+    setIsBudgetAdvisorOpen,
+    selectedVendorForInquiry,
+    setSelectedVendorForInquiry,
+    isApiKeyModalOpen,
+    setIsApiKeyModalOpen,
+  }), [
+    events,
+    currentEvent,
+    currentEventId,
+    activeView,
+    isGeneratorOpen,
+    isBudgetAdvisorOpen,
+    selectedVendorForInquiry,
+    isApiKeyModalOpen,
+    isSimulationActive,
+    simulationSpeed,
+    selectEvent,
+    addNewEvent,
+    resetToBenchmarks,
+    updateEventDetails,
+    addBudgetItem,
+    updateBudgetItem,
+    deleteBudgetItem,
+    addTimelineItem,
+    updateTimelineItem,
+    toggleTimelineStatus,
+    deleteTimelineItem,
+    addVendorItem,
+    updateVendorItem,
+    deleteVendorItem,
+    toggleVendorTask,
+    postChatMessage,
+    triggerSimulatedAction,
+    updateCollaboratorStatus,
+  ]);
 
   return (
-    <EventContext.Provider
-      value={{
-        events,
-        currentEvent,
-        currentEventId,
-        activeView,
-        setActiveView,
-        selectEvent,
-        addNewEvent,
-        resetToBenchmarks,
-        updateEventDetails,
-        addBudgetItem,
-        updateBudgetItem,
-        deleteBudgetItem,
-        addTimelineItem,
-        updateTimelineItem,
-        toggleTimelineStatus,
-        deleteTimelineItem,
-        addVendorItem,
-        updateVendorItem,
-        deleteVendorItem,
-        toggleVendorTask,
-        isSimulationActive,
-        setIsSimulationActive,
-        simulationSpeed,
-        setSimulationSpeed,
-        postChatMessage,
-        triggerSimulatedAction,
-        updateCollaboratorStatus,
-        isGeneratorOpen,
-        setIsGeneratorOpen,
-        isBudgetAdvisorOpen,
-        setIsBudgetAdvisorOpen,
-        selectedVendorForInquiry,
-        setSelectedVendorForInquiry,
-        isApiKeyModalOpen,
-        setIsApiKeyModalOpen,
-      }}
-    >
+    <EventContext.Provider value={contextValue}>
       {children}
     </EventContext.Provider>
   );
 };
 
-export const useEventContext = () => {
+export const useEventContext = (): EventContextType => {
   const context = useContext(EventContext);
   if (!context) {
     throw new Error('useEventContext must be used within an EventProvider');

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useEventContext } from '../../context/EventContext';
 import { VendorItem, ContractStatus } from '../../types';
 import { 
@@ -57,22 +57,30 @@ export const VendorView: React.FC = () => {
     'fulfilled',
   ];
 
-  const filteredVendors = (currentEvent.vendors || []).filter((v) => {
-    if (selectedStatus !== 'All' && v.contractStatus !== selectedStatus) return false;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      return (
-        v.companyName.toLowerCase().includes(q) ||
-        v.contactName.toLowerCase().includes(q) ||
-        v.category.toLowerCase().includes(q) ||
-        v.email.toLowerCase().includes(q)
-      );
-    }
-    return true;
-  });
+  // Memoized filtered vendors
+  const filteredVendors = useMemo(() => {
+    return (currentEvent.vendors || []).filter((v) => {
+      if (selectedStatus !== 'All' && v.contractStatus !== selectedStatus) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        return (
+          v.companyName.toLowerCase().includes(q) ||
+          v.contactName.toLowerCase().includes(q) ||
+          v.category.toLowerCase().includes(q) ||
+          v.email.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [currentEvent.vendors, selectedStatus, searchQuery]);
 
-  const totalContracted = (currentEvent.vendors || []).reduce((s, v) => s + (v.costEstimate || 0), 0);
-  const totalDeposited = (currentEvent.vendors || []).reduce((s, v) => s + (v.depositPaid || 0), 0);
+  const { totalContracted, totalDeposited } = useMemo(() => {
+    const list = currentEvent.vendors || [];
+    return {
+      totalContracted: list.reduce((s, v) => s + (v.costEstimate || 0), 0),
+      totalDeposited: list.reduce((s, v) => s + (v.depositPaid || 0), 0),
+    };
+  }, [currentEvent.vendors]);
   const remainingLiability = totalContracted - totalDeposited;
 
   const handleOpenAdd = (v?: VendorItem) => {
@@ -432,7 +440,7 @@ export const VendorView: React.FC = () => {
                   </label>
                   <select
                     value={formStatus}
-                    onChange={(e) => setFormStatus(e.target.value as any)}
+                    onChange={(e) => setFormStatus(e.target.value as ContractStatus)}
                     className="w-full px-3 py-2 text-xs border border-stone-200 rounded focus:border-[#B4863A] focus:outline-none bg-white"
                   >
                     <option value="researching">Researching</option>

@@ -192,3 +192,23 @@ export interface BudgetAdvisorResponse {
   }>;
   negotiationPointers: string[];
 }
+
+
+export interface CreativeConcepts {
+  conceptTitle: string;
+  narrative: string;
+  palette: PaletteColor[];
+  sensoryMotifs: SensoryMotifs;
+  menuConcepts: MenuCourse[];
+  spatialInstallations: string[];
+}
+
+export interface BudgetMetrics {
+  totalPlanned: number;
+  totalCommitted: number;
+  totalPaid: number;
+  variance: number;
+  committedPercent: number;
+  paidPercent: number;
+  costPerGuest: number;
+}

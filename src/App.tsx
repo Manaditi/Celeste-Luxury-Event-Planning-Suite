@@ -1,21 +1,53 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { EventProvider, useEventContext } from './context/EventContext';
 import { TopBar } from './components/layout/TopBar';
 import { EventBanner } from './components/layout/EventBanner';
-import { OverviewDashboard } from './components/views/OverviewDashboard';
-import { TimelineView } from './components/views/TimelineView';
-import { BudgetView } from './components/views/BudgetView';
-import { VendorView } from './components/views/VendorView';
-import { CreativeView } from './components/views/CreativeView';
-import { TeamRoomView } from './components/views/TeamRoomView';
-import { EventGeneratorModal } from './components/modals/EventGeneratorModal';
-import { VendorInquiryModal } from './components/modals/VendorInquiryModal';
-import { BudgetAdvisorModal } from './components/modals/BudgetAdvisorModal';
-import { ApiKeyModal } from './components/modals/ApiKeyModal';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { ViewLoadingSkeleton } from './components/common/ViewLoadingSkeleton';
+
+// Optimized code-splitting for high runtime efficiency and reduced initial bundle weight
+const OverviewDashboard = React.lazy(() => 
+  import('./components/views/OverviewDashboard').then(m => ({ default: m.OverviewDashboard }))
+);
+const TimelineView = React.lazy(() => 
+  import('./components/views/TimelineView').then(m => ({ default: m.TimelineView }))
+);
+const BudgetView = React.lazy(() => 
+  import('./components/views/BudgetView').then(m => ({ default: m.BudgetView }))
+);
+const VendorView = React.lazy(() => 
+  import('./components/views/VendorView').then(m => ({ default: m.VendorView }))
+);
+const CreativeView = React.lazy(() => 
+  import('./components/views/CreativeView').then(m => ({ default: m.CreativeView }))
+);
+const TeamRoomView = React.lazy(() => 
+  import('./components/views/TeamRoomView').then(m => ({ default: m.TeamRoomView }))
+);
+
+// On-demand modal chunks
+const EventGeneratorModal = React.lazy(() => 
+  import('./components/modals/EventGeneratorModal').then(m => ({ default: m.EventGeneratorModal }))
+);
+const VendorInquiryModal = React.lazy(() => 
+  import('./components/modals/VendorInquiryModal').then(m => ({ default: m.VendorInquiryModal }))
+);
+const BudgetAdvisorModal = React.lazy(() => 
+  import('./components/modals/BudgetAdvisorModal').then(m => ({ default: m.BudgetAdvisorModal }))
+);
+const ApiKeyModal = React.lazy(() => 
+  import('./components/modals/ApiKeyModal').then(m => ({ default: m.ApiKeyModal }))
+);
 
 const MainContent: React.FC = () => {
-  const { activeView, currentEvent } = useEventContext();
+  const { 
+    activeView, 
+    currentEvent, 
+    isGeneratorOpen, 
+    isBudgetAdvisorOpen, 
+    selectedVendorForInquiry, 
+    isApiKeyModalOpen 
+  } = useEventContext();
 
   const renderActiveView = () => {
     switch (activeView) {
@@ -57,7 +89,7 @@ const MainContent: React.FC = () => {
       {/* Hero Header & 4-Stat Metric Strip */}
       <EventBanner />
 
-      {/* Main Workspace Body with Error Boundary */}
+      {/* Main Workspace Body with Error Boundary & Suspense Fallback */}
       <main 
         id="main-content" 
         tabIndex={-1} 
@@ -65,7 +97,9 @@ const MainContent: React.FC = () => {
         aria-label="Event Orchestration Workspace"
       >
         <ErrorBoundary>
-          {renderActiveView()}
+          <Suspense fallback={<ViewLoadingSkeleton />}>
+            {renderActiveView()}
+          </Suspense>
         </ErrorBoundary>
       </main>
 
@@ -91,11 +125,13 @@ const MainContent: React.FC = () => {
         </div>
       </footer>
 
-      {/* Global Modals */}
-      <EventGeneratorModal />
-      <VendorInquiryModal />
-      <BudgetAdvisorModal />
-      <ApiKeyModal />
+      {/* On-Demand Modals Loaded via Suspense */}
+      <Suspense fallback={null}>
+        {isGeneratorOpen && <EventGeneratorModal />}
+        {isBudgetAdvisorOpen && <BudgetAdvisorModal />}
+        {selectedVendorForInquiry && <VendorInquiryModal />}
+        {isApiKeyModalOpen && <ApiKeyModal />}
+      </Suspense>
     </div>
   );
 };
