@@ -12,6 +12,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
 // ==========================================
 // 1. IN-MEMORY CACHE FOR HIGH EFFICIENCY
@@ -204,7 +205,7 @@ app.get('/api/health', (req: Request, res: Response) => {
   res.json({
     status: 'healthy',
     service: 'Céleste Haute Event Orchestration AI Proxy',
-    model: 'gemini-3.8-flash',
+    model: GEMINI_MODEL,
     hasApiKey: hasKey,
     security: {
       rateLimiter: 'active',
@@ -336,7 +337,7 @@ Return ONLY a valid JSON object matching this schema:
     if (ai) {
       try {
         const response = await ai.models.generateContent({
-          model: 'gemini-3.8-flash',
+          model: GEMINI_MODEL,
           contents: prompt,
           config: { responseMimeType: 'application/json' },
         });
@@ -417,7 +418,7 @@ Return ONLY a JSON object:
     if (ai) {
       try {
         const response = await ai.models.generateContent({
-          model: 'gemini-3.8-flash',
+          model: GEMINI_MODEL,
           contents: prompt,
           config: { responseMimeType: 'application/json' },
         });
@@ -509,7 +510,7 @@ Return ONLY a JSON object:
     if (ai) {
       try {
         const response = await ai.models.generateContent({
-          model: 'gemini-3.8-flash',
+          model: GEMINI_MODEL,
           contents: prompt,
           config: { responseMimeType: 'application/json' },
         });
@@ -608,7 +609,7 @@ Return ONLY a valid JSON object with summary, healthScore (0-100), varianceAlert
     if (ai) {
       try {
         const response = await ai.models.generateContent({
-          model: 'gemini-3.8-flash',
+          model: GEMINI_MODEL,
           contents: prompt,
           config: { responseMimeType: 'application/json' },
         });
