@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useEventContext } from '../../context/EventContext';
 import { EventType, CelesteEvent } from '../../types';
 import { generateEventPlanApi } from '../../services/api';
@@ -30,6 +30,17 @@ export const EventGeneratorModal: React.FC = () => {
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [stepMessage, setStepMessage] = useState('');
+
+  // Handle Escape key to close dialog
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isGeneratorOpen && !isGenerating) {
+        setIsGeneratorOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isGeneratorOpen, isGenerating, setIsGeneratorOpen]);
 
   if (!isGeneratorOpen) return null;
 
@@ -159,20 +170,26 @@ export const EventGeneratorModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div 
+      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="generator-modal-title"
+      aria-describedby="generator-modal-desc"
+    >
       <div className="bg-white border border-[#B4863A]/40 w-full max-w-2xl rounded-sm shadow-luxury-lg p-6 sm:p-8 animate-in zoom-in-95 duration-200 max-h-[92vh] overflow-y-auto">
         
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-stone-100">
           <div className="flex items-center space-x-2.5">
-            <div className="w-8 h-8 rounded-sm bg-charcoal-900 flex items-center justify-center border border-[#B4863A]/40">
+            <div className="w-8 h-8 rounded-sm bg-charcoal-900 flex items-center justify-center border border-[#B4863A]/40" aria-hidden="true">
               <Sparkles className="w-4 h-4 text-[#B4863A]" />
             </div>
             <div>
-              <h3 className="font-serif text-xl font-semibold text-charcoal-900">
+              <h3 id="generator-modal-title" className="font-serif text-xl font-semibold text-charcoal-900">
                 Generate Event Plan with Gemini
               </h3>
-              <p className="text-xs text-charcoal-500 font-light">
+              <p id="generator-modal-desc" className="text-xs text-charcoal-500 font-light">
                 Generates complete budgets, run-of-show schedules, sensory themes & vendor matrices
               </p>
             </div>
@@ -181,9 +198,10 @@ export const EventGeneratorModal: React.FC = () => {
           <button
             onClick={() => setIsGeneratorOpen(false)}
             disabled={isGenerating}
-            className="p-1 text-charcoal-400 hover:text-charcoal-700 transition-colors"
+            aria-label="Close dialog"
+            className="p-1 text-charcoal-400 hover:text-charcoal-700 transition-colors focus:outline-none focus:ring-2 focus:ring-[#B4863A] rounded"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
 
@@ -198,7 +216,7 @@ export const EventGeneratorModal: React.FC = () => {
                 key={idx}
                 type="button"
                 onClick={() => applyPreset(preset)}
-                className="text-xs px-3 py-1.5 rounded bg-[#FAF8F5] hover:bg-[#F4EFEA] border border-stone-200 hover:border-[#B4863A] text-charcoal-800 transition-all font-medium"
+                className="text-xs px-3 py-1.5 rounded bg-[#FAF8F5] hover:bg-[#F4EFEA] border border-stone-200 hover:border-[#B4863A] text-charcoal-800 transition-all font-medium focus:outline-none focus:ring-2 focus:ring-[#B4863A]"
               >
                 {preset.label}
               </button>
@@ -211,27 +229,29 @@ export const EventGeneratorModal: React.FC = () => {
           
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="sm:col-span-2">
-              <label className="text-[11px] uppercase tracking-wider text-charcoal-600 font-medium block mb-1">
+              <label htmlFor="gen-title" className="text-[11px] uppercase tracking-wider text-charcoal-600 font-medium block mb-1">
                 Event Title
               </label>
               <input
+                id="gen-title"
                 type="text"
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. The St. Clair Estate Wedding"
-                className="w-full px-3 py-2 text-xs border border-stone-200 rounded focus:border-[#B4863A] focus:outline-none"
+                className="w-full px-3 py-2 text-xs border border-stone-200 rounded focus:border-[#B4863A] focus:outline-none focus:ring-1 focus:ring-[#B4863A]"
               />
             </div>
 
             <div>
-              <label className="text-[11px] uppercase tracking-wider text-charcoal-600 font-medium block mb-1">
+              <label htmlFor="gen-type" className="text-[11px] uppercase tracking-wider text-charcoal-600 font-medium block mb-1">
                 Event Type
               </label>
               <select
+                id="gen-type"
                 value={type}
                 onChange={(e) => setType(e.target.value as any)}
-                className="w-full px-3 py-2 text-xs border border-stone-200 rounded focus:border-[#B4863A] focus:outline-none bg-white"
+                className="w-full px-3 py-2 text-xs border border-stone-200 rounded focus:border-[#B4863A] focus:outline-none bg-white focus:ring-1 focus:ring-[#B4863A]"
               >
                 <option value="wedding">Luxury Wedding</option>
                 <option value="birthday">Milestone Birthday / Gala</option>
@@ -243,108 +263,115 @@ export const EventGeneratorModal: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-[11px] uppercase tracking-wider text-charcoal-600 font-medium block mb-1">
+              <label htmlFor="gen-date" className="text-[11px] uppercase tracking-wider text-charcoal-600 font-medium block mb-1">
                 Target Date
               </label>
               <input
+                id="gen-date"
                 type="date"
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3 py-2 text-xs border border-stone-200 rounded focus:border-[#B4863A] focus:outline-none"
+                className="w-full px-3 py-2 text-xs border border-stone-200 rounded focus:border-[#B4863A] focus:outline-none focus:ring-1 focus:ring-[#B4863A]"
               />
             </div>
 
             <div>
-              <label className="text-[11px] uppercase tracking-wider text-charcoal-600 font-medium block mb-1">
+              <label htmlFor="gen-location" className="text-[11px] uppercase tracking-wider text-charcoal-600 font-medium block mb-1">
                 Venue Location & Region
               </label>
               <input
+                id="gen-location"
                 type="text"
                 required
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="e.g. St. Helena, Napa Valley, CA"
-                className="w-full px-3 py-2 text-xs border border-stone-200 rounded focus:border-[#B4863A] focus:outline-none"
+                className="w-full px-3 py-2 text-xs border border-stone-200 rounded focus:border-[#B4863A] focus:outline-none focus:ring-1 focus:ring-[#B4863A]"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="text-[11px] uppercase tracking-wider text-charcoal-600 font-medium block mb-1">
+              <label htmlFor="gen-guests" className="text-[11px] uppercase tracking-wider text-charcoal-600 font-medium block mb-1">
                 Guest Count
               </label>
               <input
+                id="gen-guests"
                 type="number"
                 required
                 min={10}
                 value={guestCount}
                 onChange={(e) => setGuestCount(Number(e.target.value))}
-                className="w-full px-3 py-2 text-xs border border-stone-200 rounded font-mono focus:border-[#B4863A] focus:outline-none"
+                className="w-full px-3 py-2 text-xs border border-stone-200 rounded font-mono focus:border-[#B4863A] focus:outline-none focus:ring-1 focus:ring-[#B4863A]"
               />
             </div>
 
             <div>
-              <label className="text-[11px] uppercase tracking-wider text-charcoal-600 font-medium block mb-1">
+              <label htmlFor="gen-budget" className="text-[11px] uppercase tracking-wider text-charcoal-600 font-medium block mb-1">
                 Total Budget ($ USD)
               </label>
               <input
+                id="gen-budget"
                 type="number"
                 required
                 step={1000}
                 value={budgetTotal}
                 onChange={(e) => setBudgetTotal(Number(e.target.value))}
-                className="w-full px-3 py-2 text-xs border border-stone-200 rounded font-mono focus:border-[#B4863A] focus:outline-none"
+                className="w-full px-3 py-2 text-xs border border-stone-200 rounded font-mono focus:border-[#B4863A] focus:outline-none focus:ring-1 focus:ring-[#B4863A]"
               />
             </div>
 
             <div>
-              <label className="text-[11px] uppercase tracking-wider text-charcoal-600 font-medium block mb-1">
+              <label htmlFor="gen-loctype" className="text-[11px] uppercase tracking-wider text-charcoal-600 font-medium block mb-1">
                 Venue Archetype
               </label>
               <input
+                id="gen-loctype"
                 type="text"
                 value={locationType}
                 onChange={(e) => setLocationType(e.target.value)}
                 placeholder="e.g. Chateau Vineyards"
-                className="w-full px-3 py-2 text-xs border border-stone-200 rounded focus:border-[#B4863A] focus:outline-none"
+                className="w-full px-3 py-2 text-xs border border-stone-200 rounded focus:border-[#B4863A] focus:outline-none focus:ring-1 focus:ring-[#B4863A]"
               />
             </div>
           </div>
 
           <div>
-            <label className="text-[11px] uppercase tracking-wider text-charcoal-600 font-medium block mb-1">
+            <label htmlFor="gen-vibe" className="text-[11px] uppercase tracking-wider text-charcoal-600 font-medium block mb-1">
               Aesthetic Direction & Sensory Vibe
             </label>
             <textarea
+              id="gen-vibe"
               rows={2}
               required
               value={vibe}
               onChange={(e) => setVibe(e.target.value)}
               placeholder="e.g. Old World French Riviera romanticism, weathered limestone, low candlelight..."
-              className="w-full px-3 py-2 text-xs border border-stone-200 rounded focus:border-[#B4863A] focus:outline-none"
+              className="w-full px-3 py-2 text-xs border border-stone-200 rounded focus:border-[#B4863A] focus:outline-none focus:ring-1 focus:ring-[#B4863A]"
             />
           </div>
 
           <div>
-            <label className="text-[11px] uppercase tracking-wider text-charcoal-600 font-medium block mb-1">
+            <label htmlFor="gen-special" className="text-[11px] uppercase tracking-wider text-charcoal-600 font-medium block mb-1">
               Special Client Directives & Key Moments
             </label>
             <input
+              id="gen-special"
               type="text"
               value={specialRequests}
               onChange={(e) => setSpecialRequests(e.target.value)}
               placeholder="e.g. Caviar station, midnight brass fanfare, 35mm film only"
-              className="w-full px-3 py-2 text-xs border border-stone-200 rounded focus:border-[#B4863A] focus:outline-none"
+              className="w-full px-3 py-2 text-xs border border-stone-200 rounded focus:border-[#B4863A] focus:outline-none focus:ring-1 focus:ring-[#B4863A]"
             />
           </div>
 
           {/* Loading status progress indicator */}
           {isGenerating && (
-            <div className="p-4 bg-[#FAF8F5] border border-[#B4863A]/40 rounded text-center space-y-2 animate-pulse">
+            <div className="p-4 bg-[#FAF8F5] border border-[#B4863A]/40 rounded text-center space-y-2 animate-pulse" role="status" aria-live="polite">
               <div className="flex items-center justify-center space-x-2 text-xs font-serif font-semibold text-[#946A29]">
-                <RefreshCw className="w-4 h-4 animate-spin text-[#B4863A]" />
+                <RefreshCw className="w-4 h-4 animate-spin text-[#B4863A]" aria-hidden="true" />
                 <span>{stepMessage}</span>
               </div>
               <p className="text-[10px] text-charcoal-400 font-mono">
@@ -364,23 +391,23 @@ export const EventGeneratorModal: React.FC = () => {
                 type="button"
                 onClick={() => setIsGeneratorOpen(false)}
                 disabled={isGenerating}
-                className="px-4 py-2 text-xs text-charcoal-600 hover:text-charcoal-900"
+                className="px-4 py-2 text-xs text-charcoal-600 hover:text-charcoal-900 focus:outline-none focus:ring-1 focus:ring-stone-400 rounded"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isGenerating}
-                className="flex items-center space-x-2 px-6 py-2.5 bg-charcoal-900 hover:bg-[#2A2421] disabled:opacity-50 text-white text-xs font-medium uppercase tracking-wider rounded-sm transition-all shadow-sm"
+                className="flex items-center space-x-2 px-6 py-2.5 bg-charcoal-900 hover:bg-[#2A2421] disabled:opacity-50 text-white text-xs font-medium uppercase tracking-wider rounded-sm transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-[#B4863A]"
               >
                 {isGenerating ? (
                   <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
                     <span>Synthesizing...</span>
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-3.5 h-3.5 text-[#B4863A]" />
+                    <Sparkles className="w-3.5 h-3.5 text-[#B4863A]" aria-hidden="true" />
                     <span>Generate Full Plan</span>
                   </>
                 )}

@@ -21,6 +21,17 @@ export const BudgetAdvisorModal: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [advisorData, setAdvisorData] = useState<BudgetAdvisorResponse | null>(null);
 
+  // Close on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isBudgetAdvisorOpen && !isLoading) {
+        setIsBudgetAdvisorOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isBudgetAdvisorOpen, isLoading, setIsBudgetAdvisorOpen]);
+
   useEffect(() => {
     if (isBudgetAdvisorOpen) {
       fetchAdvisorReport();
@@ -61,20 +72,26 @@ export const BudgetAdvisorModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div 
+      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="advisor-modal-title"
+      aria-describedby="advisor-modal-desc"
+    >
       <div className="bg-white border border-[#B4863A]/40 w-full max-w-3xl rounded-sm shadow-luxury-lg p-6 sm:p-8 animate-in zoom-in-95 duration-200 max-h-[92vh] overflow-y-auto">
         
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-stone-100">
           <div className="flex items-center space-x-2.5">
-            <div className="w-8 h-8 rounded-sm bg-charcoal-900 flex items-center justify-center border border-[#B4863A]/40">
+            <div className="w-8 h-8 rounded-sm bg-charcoal-900 flex items-center justify-center border border-[#B4863A]/40" aria-hidden="true">
               <Sparkles className="w-4 h-4 text-[#B4863A]" />
             </div>
             <div>
-              <h3 className="font-serif text-xl font-semibold text-charcoal-900">
+              <h3 id="advisor-modal-title" className="font-serif text-xl font-semibold text-charcoal-900">
                 AI Fiduciary Budget Advisor
               </h3>
-              <p className="text-xs text-charcoal-500 font-light">
+              <p id="advisor-modal-desc" className="text-xs text-charcoal-500 font-light">
                 Autonomous financial risk modeling & vendor negotiation levers via Gemini 3.8 Flash
               </p>
             </div>
@@ -82,16 +99,17 @@ export const BudgetAdvisorModal: React.FC = () => {
 
           <button
             onClick={() => setIsBudgetAdvisorOpen(false)}
-            className="p-1 text-charcoal-400 hover:text-charcoal-700 transition-colors"
+            aria-label="Close dialog"
+            className="p-1 text-charcoal-400 hover:text-charcoal-700 transition-colors focus:outline-none focus:ring-2 focus:ring-[#B4863A] rounded"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
 
         {/* Loading State */}
         {isLoading && (
-          <div className="py-20 text-center space-y-3">
-            <RefreshCw className="w-8 h-8 animate-spin mx-auto text-[#B4863A]" />
+          <div className="py-20 text-center space-y-3" role="status" aria-live="polite">
+            <RefreshCw className="w-8 h-8 animate-spin mx-auto text-[#B4863A]" aria-hidden="true" />
             <h4 className="font-serif text-base text-charcoal-900">
               Analyzing Portfolio Allocations...
             </h4>
@@ -117,7 +135,7 @@ export const BudgetAdvisorModal: React.FC = () => {
               </div>
 
               {/* Health Score Gauge */}
-              <div className="shrink-0 text-center p-3 bg-white rounded border border-stone-200 shadow-2xs min-w-[120px]">
+              <div className="shrink-0 text-center p-3 bg-white rounded border border-stone-200 shadow-2xs min-w-[120px]" aria-label={`Health Index: ${advisorData.healthScore} out of 100`}>
                 <span className="text-[10px] uppercase tracking-wider text-charcoal-400 font-semibold block">
                   Health Index
                 </span>
@@ -134,7 +152,7 @@ export const BudgetAdvisorModal: React.FC = () => {
             {advisorData.varianceAlerts?.length > 0 && (
               <div>
                 <h4 className="text-xs uppercase tracking-wider font-semibold text-charcoal-700 mb-3 flex items-center space-x-1.5">
-                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600" aria-hidden="true" />
                   <span>Category Variance & Exposure Alerts</span>
                 </h4>
                 <div className="space-y-3">
@@ -149,7 +167,7 @@ export const BudgetAdvisorModal: React.FC = () => {
 
                       <div className="mt-1 flex items-center space-x-3 text-xs font-mono text-charcoal-500">
                         <span>Planned: <strong className="text-charcoal-800">${alert.planned.toLocaleString()}</strong></span>
-                        <span>·</span>
+                        <span aria-hidden="true">·</span>
                         <span>Committed: <strong className="text-charcoal-800">${alert.committed.toLocaleString()}</strong></span>
                       </div>
 
@@ -166,7 +184,7 @@ export const BudgetAdvisorModal: React.FC = () => {
             {advisorData.costSavingLevers?.length > 0 && (
               <div>
                 <h4 className="text-xs uppercase tracking-wider font-semibold text-charcoal-700 mb-3 flex items-center space-x-1.5">
-                  <Zap className="w-3.5 h-3.5 text-[#B4863A]" />
+                  <Zap className="w-3.5 h-3.5 text-[#B4863A]" aria-hidden="true" />
                   <span>Cost Optimization Trade-Offs</span>
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -204,7 +222,7 @@ export const BudgetAdvisorModal: React.FC = () => {
                 <ul className="space-y-1.5 text-xs text-charcoal-700 font-light">
                   {advisorData.negotiationPointers.map((pointer, i) => (
                     <li key={i} className="flex items-start space-x-2">
-                      <span className="text-[#B4863A] font-bold">·</span>
+                      <span className="text-[#B4863A] font-bold" aria-hidden="true">·</span>
                       <span>{pointer}</span>
                     </li>
                   ))}
@@ -216,15 +234,15 @@ export const BudgetAdvisorModal: React.FC = () => {
             <div className="pt-4 border-t border-stone-100 flex items-center justify-between">
               <button
                 onClick={fetchAdvisorReport}
-                className="flex items-center space-x-1.5 text-xs text-[#946A29] hover:underline font-medium"
+                className="flex items-center space-x-1.5 text-xs text-[#946A29] hover:underline font-medium focus:outline-none focus:ring-1 focus:ring-[#B4863A] rounded px-1"
               >
-                <RefreshCw className="w-3 h-3" />
+                <RefreshCw className="w-3 h-3" aria-hidden="true" />
                 <span>Re-run Analysis</span>
               </button>
 
               <button
                 onClick={() => setIsBudgetAdvisorOpen(false)}
-                className="px-5 py-2 bg-charcoal-900 hover:bg-[#2A2421] text-white text-xs font-medium uppercase tracking-wider rounded"
+                className="px-5 py-2 bg-charcoal-900 hover:bg-[#2A2421] text-white text-xs font-medium uppercase tracking-wider rounded focus:outline-none focus:ring-2 focus:ring-[#B4863A]"
               >
                 Done
               </button>

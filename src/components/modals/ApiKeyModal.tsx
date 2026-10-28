@@ -22,6 +22,17 @@ export const ApiKeyModal: React.FC = () => {
   const [isChecking, setIsChecking] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  // Close on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isApiKeyModalOpen) {
+        setIsApiKeyModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isApiKeyModalOpen, setIsApiKeyModalOpen]);
+
   useEffect(() => {
     if (isApiKeyModalOpen) {
       setApiKey(ApiKeyStorage.get());
@@ -55,29 +66,36 @@ export const ApiKeyModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div 
+      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="apikey-modal-title"
+      aria-describedby="apikey-modal-desc"
+    >
       <div className="bg-white border border-[#B4863A]/40 w-full max-w-md rounded-sm shadow-luxury-lg p-6 animate-in zoom-in-95 duration-150">
         
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-stone-100">
           <div className="flex items-center space-x-2">
-            <Key className="w-4 h-4 text-[#B4863A]" />
-            <h3 className="font-serif text-lg font-semibold text-charcoal-900">
+            <Key className="w-4 h-4 text-[#B4863A]" aria-hidden="true" />
+            <h3 id="apikey-modal-title" className="font-serif text-lg font-semibold text-charcoal-900">
               GenAI Engine Configuration
             </h3>
           </div>
           <button
             onClick={() => setIsApiKeyModalOpen(false)}
-            className="text-charcoal-400 hover:text-charcoal-700 text-sm"
+            aria-label="Close dialog"
+            className="text-charcoal-400 hover:text-charcoal-700 text-sm focus:outline-none focus:ring-2 focus:ring-[#B4863A] rounded p-1"
           >
-            ✕
+            <X className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
 
         {/* Server Proxy Status Card */}
         <div className="mt-4 p-3.5 bg-[#FAF8F5] border border-stone-200/80 rounded flex items-center justify-between text-xs">
           <div className="flex items-center space-x-2.5">
-            <Cpu className="w-4 h-4 text-[#B4863A]" />
+            <Cpu className="w-4 h-4 text-[#B4863A]" aria-hidden="true" />
             <div>
               <div className="font-semibold text-charcoal-900">Server Proxy (/api/events/*)</div>
               <div className="text-[10px] text-charcoal-500 font-mono mt-0.5">
@@ -89,7 +107,7 @@ export const ApiKeyModal: React.FC = () => {
           <div className="text-right">
             {serverStatus.status === 'healthy' ? (
               <span className="flex items-center space-x-1 text-emerald-700 text-[11px] font-medium">
-                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                <CheckCircle2 className="w-3 h-3 text-emerald-600" aria-hidden="true" />
                 <span>Online</span>
               </span>
             ) : serverStatus.status === 'checking' ? (
@@ -103,17 +121,18 @@ export const ApiKeyModal: React.FC = () => {
         {/* API Key Form */}
         <form onSubmit={handleSave} className="mt-4 space-y-4">
           <div>
-            <label className="text-[11px] uppercase tracking-wider text-charcoal-600 font-medium block mb-1">
+            <label htmlFor="custom-api-key" className="text-[11px] uppercase tracking-wider text-charcoal-600 font-medium block mb-1">
               Custom Gemini API Key (Optional)
             </label>
             <input
+              id="custom-api-key"
               type="password"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder="AIzaSy..."
-              className="w-full px-3 py-2 text-xs border border-stone-200 rounded font-mono focus:border-[#B4863A] focus:outline-none"
+              className="w-full px-3 py-2 text-xs border border-stone-200 rounded font-mono focus:border-[#B4863A] focus:outline-none focus:ring-1 focus:ring-[#B4863A]"
             />
-            <p className="text-[10px] text-charcoal-400 font-light mt-1">
+            <p id="apikey-modal-desc" className="text-[10px] text-charcoal-400 font-light mt-1">
               If left blank, Céleste uses the server environment key or high-fidelity offline synthesis.
             </p>
           </div>
@@ -122,7 +141,7 @@ export const ApiKeyModal: React.FC = () => {
             <button
               type="button"
               onClick={handleClear}
-              className="text-xs text-charcoal-500 hover:text-charcoal-800 underline"
+              className="text-xs text-charcoal-500 hover:text-charcoal-800 underline focus:outline-none focus:ring-1 focus:ring-stone-400 rounded px-1"
             >
               Clear Key
             </button>
@@ -131,13 +150,13 @@ export const ApiKeyModal: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsApiKeyModalOpen(false)}
-                className="px-3 py-1.5 text-xs text-charcoal-600 hover:text-charcoal-900"
+                className="px-3 py-1.5 text-xs text-charcoal-600 hover:text-charcoal-900 focus:outline-none focus:ring-1 focus:ring-stone-400 rounded"
               >
                 Close
               </button>
               <button
                 type="submit"
-                className="px-4 py-1.5 bg-charcoal-900 hover:bg-[#2A2421] text-white text-xs font-medium uppercase tracking-wider rounded"
+                className="px-4 py-1.5 bg-charcoal-900 hover:bg-[#2A2421] text-white text-xs font-medium uppercase tracking-wider rounded focus:outline-none focus:ring-2 focus:ring-[#B4863A]"
               >
                 {saveSuccess ? 'Saved!' : 'Save Key'}
               </button>
